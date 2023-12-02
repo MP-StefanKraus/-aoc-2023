@@ -1,18 +1,17 @@
+use std::cmp;
 use std::io;
-
-const MAX_RED: i32 = 12;
-const MAX_GREEN: i32 = 13;
-const MAX_BLUE: i32 = 14;
 
 fn main() {
     let mut sum = 0;
-    for (game_num, line) in io::stdin().lines().enumerate() {
-        let mut valid = true;
-
+    for (_game_num, line) in io::stdin().lines().enumerate() {
         let line = line.unwrap();
 
         let game_part = line.split(":").collect::<Vec<&str>>()[1];
         let draws = game_part.split(";");
+
+        let mut max_red = 0;
+        let mut max_blue = 0;
+        let mut max_green = 0;
 
         for draw in draws {
             let drawed_cubes = draw.split(",");
@@ -23,15 +22,16 @@ fn main() {
                 let color = cubes.next().unwrap();
 
                 match color {
-                    "red" => valid &= num <= MAX_RED,
-                    "blue" => valid &= num <= MAX_BLUE,
-                    "green" => valid &= num <= MAX_GREEN,
+                    "red" => max_red = cmp::max(max_red, num),
+                    "blue" => max_blue = cmp::max(max_blue, num),
+                    "green" => max_green = cmp::max(max_green, num),
                     _ => (),
                 }
             }
         }
 
-        if valid { sum += game_num + 1}
+        let power = max_red * max_blue * max_green;
+        sum += power;
     }
 
     println!("{sum}");
