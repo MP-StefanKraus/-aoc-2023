@@ -49,6 +49,53 @@ fn replace_around(field: Vec<String>, symbols: HashSet<(i32, i32)>) -> Vec<Strin
     modified_field
 }
 
+fn search_numbers(
+    field: Vec<String>,
+    symbols: HashSet<(i32, i32)>,
+    numbers: HashSet<(i32, i32, i32, String)>,
+) -> Vec<(i32, i32)> {
+    let mut result = Vec::new();
+    for s in symbols.iter() {
+        let row = s.0 as usize;
+        let col = s.1 as usize;
+        let symbol = field[row].chars().nth(col).unwrap();
+
+        if symbol != '*' {
+            continue;
+        }
+
+        let mut symbol_rel_pos: HashSet<(usize, usize)> = HashSet::new();
+
+        for dx in [-1, 0, 1] {
+            for dy in [-1, 0, 1] {
+                let x = cmp::min(cmp::max(0, row as i32 + dx), (field.len() - 1) as i32) as usize;
+                let y =
+                    cmp::min(cmp::max(0, col as i32 + dy), (field[0].len() - 1) as i32) as usize;
+
+                symbol_rel_pos.insert((x, y));
+            }
+        }
+
+        let mut adjacent_numbers: Vec<i32> = Vec::new();
+
+        for num_match in &numbers {
+            for i in num_match.1..num_match.2 {
+                if symbol_rel_pos.contains(&(num_match.0 as usize, i as usize)) {
+                    adjacent_numbers.push(num_match.3.parse().unwrap());
+                    break;
+                }
+            }
+        }
+
+        if adjacent_numbers.len() == 2 {
+            let mut it = adjacent_numbers.iter();
+            result.push((*it.next().unwrap(), *it.next().unwrap()));
+        }
+    }
+
+    result
+}
+
 fn part1() {
     let field: Vec<String> = io::stdin().lines().map(|x| x.unwrap()).collect();
 
@@ -67,6 +114,21 @@ fn part1() {
     println!("{sum}");
 }
 
+fn part2() {
+    let field: Vec<String> = io::stdin().lines().map(|x| x.unwrap()).collect();
+
+    let nums_before = get_number_match_sets(field.clone());
+    let syms = get_symbols(field.clone());
+
+    let numbers = search_numbers(field, syms, nums_before);
+    let mut sum = 0;
+
+    for (n1, n2) in numbers.into_iter() {
+        sum += n1 * n2;
+    }
+    println!("{sum}");
+}
+
 fn main() {
-    part1();
+    part2();
 }
