@@ -1,10 +1,35 @@
-use std::io;
+use num::integer::lcm;
 use regex::Regex;
 use std::collections::HashMap;
+use std::io;
 
+fn to_num_of_steps(
+    start: String,
+    commands: &String,
+    ways: &HashMap<String, (String, String)>,
+) -> u64 {
+    let mut cur = start;
+    let mut res = 0;
+    loop {
+        let step = commands
+            .chars()
+            .nth((res as usize) % commands.len())
+            .unwrap();
+        match step {
+            'L' => cur = ways[&cur].0.clone(),
+            'R' => cur = ways[&cur].1.clone(),
+            _ => (),
+        }
+
+        res += 1;
+
+        if cur.ends_with("Z") {
+            return res;
+        }
+    }
+}
 
 fn main() {
-
     let stdin = io::stdin();
     let mut stdin_iter = stdin.lines();
     let commands = stdin_iter.next().unwrap().unwrap();
@@ -21,25 +46,14 @@ fn main() {
         }
     }
 
-    let mut cur = "AAA".to_string();
-    let mut res = 0;
-    loop {
-        let step = commands.chars().nth(res % commands.len()).unwrap();
-        match step {
-            'L' => cur = dirmap[&cur].0.clone(),
-            'R' => cur = dirmap[&cur].1.clone(),
-            _ => (),
-        }
+    let mut steps_nodes: Vec<_> = dirmap
+        .clone()
+        .into_iter()
+        .filter(|(k, v)| k.ends_with("A"))
+        .map(|(k, v)| to_num_of_steps(k.to_string(), &commands, &dirmap))
+        .collect();
 
-        res += 1;
-
-        if cur == "ZZZ" {
-            break;
-        }
-
-
-    }
+    let res = steps_nodes.iter().fold(1, |a, b| lcm(a, *b));
 
     println!("{res}");
-
 }
