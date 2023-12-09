@@ -1,11 +1,12 @@
 use std::io;
 
 fn simulate(numbers: Vec<i32>) -> i32 {
-    let mut res = 0;
+
+    let mut results = vec![];
 
     let mut cur = numbers;
     while cur.len() > 1 {
-        res += cur[cur.len()-1];
+        results.push(cur[0]);
 
         let mut step = vec![];
         for i in 0..cur.len()-1 {
@@ -14,6 +15,11 @@ fn simulate(numbers: Vec<i32>) -> i32 {
             step.push(nxt-prev);
         }
         cur = step;
+    }
+
+    let mut res = 0;
+    for num in results.iter().rev() {
+        res = num - res;
     }
 
     res
