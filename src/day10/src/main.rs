@@ -10,9 +10,9 @@ const DIRECTIONS: [((isize, isize), [char; 4], [char; 4]); 4] = [
 fn main() {
     let lines: Vec<_> = io::stdin().lines().map(|x| x.unwrap()).collect();
 
-    let mut visited: Vec<Vec<bool>> = lines
+    let mut visited: Vec<Vec<i32>> = lines
         .iter()
-        .map(|x| x.chars().map(|_f| false).collect())
+        .map(|x| x.chars().map(|_f| 0).collect())
         .collect();
 
     let mut q = vec![];
@@ -26,12 +26,14 @@ fn main() {
 
     assert_eq!(q.len(), 1);
 
+    let mut cur = 0;
     while !q.is_empty() {
         let nxt = q.pop().unwrap();
-        if visited[nxt.0][nxt.1] {
+        if visited[nxt.0][nxt.1] > 0 {
             continue;
         }
-        visited[nxt.0][nxt.1] = true;
+        cur += 1;
+        visited[nxt.0][nxt.1] = cur;
 
         for (dir, cur, next_assume) in DIRECTIONS.iter() {
             let nx = (nxt.0 as isize) + dir.0;
@@ -52,7 +54,36 @@ fn main() {
         }
     }
 
-    let doubled_res: usize = visited.iter().map(|y| y.iter().filter(|x| **x).count()).sum();
-    let res = doubled_res / 2;
-    println!("{res:#?}")
+    let points_on_coords: usize = visited.iter().map(|y| y.iter().filter(|x| **x > 0).count()).sum();
+
+    let mut corners = vec![];
+
+    for (i, line) in lines.iter().enumerate() {
+        for (j, char) in line.chars().enumerate() {
+            if visited[i][j] > 0 && "SFJ7L".contains(char) {
+                corners.push((visited[i][j], (i as isize, j as isize)));
+            }
+        }
+    }
+
+    corners.sort();
+
+    let mut doubled_area = 0;
+
+    for i in 0..corners.len() {
+        let c = corners[i].1;
+        let n = corners[(i+1) % corners.len()].1;
+
+        doubled_area += (c.1 + n.1) * (c.0 - n.0);
+    }
+
+    if doubled_area < 0 {
+        doubled_area *= -1;
+    }
+
+    let area = doubled_area / 2;
+
+    let R = (area + 1 - (points_on_coords as isize) / 2);
+
+    println!("{R:#?}")
 }
