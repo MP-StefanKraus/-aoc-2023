@@ -1,27 +1,30 @@
+use std::cmp::{max, min};
 use std::io;
 
-fn expand_horizontal(mat: Vec<String>) -> Vec<String> {
-    let mut galaxy_tmp = vec![];
-    for line in mat {
-        galaxy_tmp.push(line.clone());
+fn find_rows_without_galaxies(mat: &Vec<String>) -> Vec<usize> {
+    let mut rows = vec![];
+    for (i, line) in mat.iter().enumerate() {
         if None == line.find('#') {
-            galaxy_tmp.push(line);
+            rows.push(i);
         }
     }
 
-    galaxy_tmp
+    rows
 }
 
 fn transpose(mat: Vec<String>) -> Vec<String> {
     let res = (0..mat[0].len())
-        .map(|i| mat.iter().map(|inner| inner.chars().nth(i).unwrap().clone()).collect::<String>())
+        .map(|i| {
+            mat.iter()
+                .map(|inner| inner.chars().nth(i).unwrap().clone())
+                .collect::<String>()
+        })
         .collect();
 
     res
 }
 
 fn find_galaxies(mat: Vec<String>) -> Vec<(usize, usize)> {
-
     let mut res = vec![];
 
     for (i, line) in mat.iter().enumerate() {
@@ -30,17 +33,34 @@ fn find_galaxies(mat: Vec<String>) -> Vec<(usize, usize)> {
                 res.push((i, j));
             }
         }
-    };
+    }
 
     res
 }
 
-fn calculate_pairwise_distance(galaxies: Vec<(usize, usize)>) -> usize {
+const EMPTY_VALUE: usize = 1_000_000;
+
+fn calculate_pairwise_distance(
+    galaxies: Vec<(usize, usize)>,
+    rows: Vec<usize>,
+    cols: Vec<usize>,
+) -> usize {
     let mut res = 0;
 
     for g1 in galaxies.iter() {
         for g2 in galaxies.iter() {
-            res += (g2.1).abs_diff(g1.1) + (g2.0).abs_diff(g1.0);
+            for i in min(g1.0, g2.0)..max(g1.0, g2.0) {
+                match rows.iter().find(|x| **x == i) {
+                    Some(_x) => res += EMPTY_VALUE,
+                    None => res += 1,
+                }
+            }
+            for i in min(g1.1, g2.1)..max(g1.1, g2.1) {
+                match cols.iter().find(|x| **x == i) {
+                    Some(_x) => res += EMPTY_VALUE,
+                    None => res += 1,
+                }
+            }
         }
     }
 
@@ -52,13 +72,14 @@ fn calculate_pairwise_distance(galaxies: Vec<(usize, usize)>) -> usize {
 fn main() {
     let mut lines: Vec<_> = io::stdin().lines().map(|x| x.unwrap()).collect();
 
-    lines = expand_horizontal(lines);
+    let rows = find_rows_without_galaxies(&lines);
     lines = transpose(lines);
-    lines = expand_horizontal(lines);
+    let cols = find_rows_without_galaxies(&lines);
     lines = transpose(lines);
 
     let galaxies = find_galaxies(lines);
-    let res = calculate_pairwise_distance(galaxies);
+
+    let res = calculate_pairwise_distance(galaxies, rows, cols);
 
     println!("{res}")
 }
