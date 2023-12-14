@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io;
 
 fn transpose(mat: Vec<String>) -> Vec<String> {
@@ -43,13 +44,60 @@ fn calculated_weight_on_line(s: String) -> usize {
 
 fn main() {
     let mut lines: Vec<_> = io::stdin().lines().map(Result::unwrap).collect();
-    lines = transpose(lines);
-    let mut result = 0;
-    for l in lines.iter() {
-        let moved = move_rocks(l);
-        let calced = calculated_weight_on_line(moved);
-        result += calced;
+
+    let mut memoiziation: HashMap<Vec<String>, usize> = HashMap::new();
+
+    let mut i = 0;
+    let end = 1_000_000_000;
+    while i < end {
+        //println!("{i}: ");
+        //println!("{lines:#?}");
+        if memoiziation.contains_key(&*lines) {
+            let first_time = memoiziation.get(&*lines).unwrap();
+            let diff = i - first_time;
+            let steps = (end - i) / diff;
+            //println!("{first_time}, {diff}, {steps}, {i}");
+            i += diff * steps;
+            //println!("{i}");
+        }
+
+        memoiziation.insert(lines.clone(), i);
+        i += 1;
+
+        // north
+        lines = transpose(lines);
+        lines = lines.iter().map(move_rocks).collect();
+
+        // west
+        lines = transpose(lines);
+        lines = lines.iter().map(move_rocks).collect();
+
+        // south
+        lines = lines.into_iter().rev().collect();
+        lines = transpose(lines);
+        lines = lines.iter().map(move_rocks).collect();
+        lines = transpose(lines);
+        lines = lines.into_iter().rev().collect();
+
+        // east
+        lines = transpose(lines);
+        lines = lines.into_iter().rev().collect();
+        lines = transpose(lines);
+        lines = lines.iter().map(move_rocks).collect();
+        lines = transpose(lines);
+        lines = lines.into_iter().rev().collect();
+        lines = transpose(lines);
+
+        let result: usize = transpose(lines.clone())
+            .into_iter()
+            .map(calculated_weight_on_line)
+            .sum();
+        println!("{result}");
     }
 
+    lines = transpose(lines);
+    println!("{lines:#?}");
+
+    let result: usize = lines.into_iter().map(calculated_weight_on_line).sum();
     println!("{result}");
 }
