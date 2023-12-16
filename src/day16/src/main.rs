@@ -1,28 +1,19 @@
+use std::cmp::max;
 use std::collections::HashSet;
 use std::io;
 
-fn main() {
-    let field: Vec<Vec<char>> = io::stdin()
-        .lines()
-        .map(Result::unwrap)
-        .collect::<Vec<String>>()
-        .into_iter()
-        .map(|x| x.chars().collect::<Vec<char>>())
-        .collect();
+fn simulate(start_position: (isize, isize), dir: (isize, isize), field: &Vec<Vec<char>>) -> usize {
 
     let mut visited = field
         .iter()
         .map(|x| x.iter().map(|y| HashSet::new()).collect())
         .collect::<Vec<Vec<HashSet<(isize, isize)>>>>();
 
-    let cur: (isize, isize) = (0, 0);
-
     let mut traces = Vec::new();
-    traces.push((cur, (0, 1)));
+    traces.push((start_position, dir));
 
     let empty_vec = Vec::new();
-    let mut iters = 0;
-    while !traces.is_empty() && iters < 1000000 {
+    while !traces.is_empty() {
         let (pos, dir) = traces.pop().unwrap();
 
         let val = field
@@ -114,5 +105,30 @@ fn main() {
                 .sum::<usize>()
         })
         .sum();
+
+    res
+}
+
+fn main() {
+    let field: Vec<Vec<char>> = io::stdin()
+        .lines()
+        .map(Result::unwrap)
+        .collect::<Vec<String>>()
+        .into_iter()
+        .map(|x| x.chars().collect::<Vec<char>>())
+        .collect();
+
+
+    let mut res = 0;
+    for i in 0..field.len() {
+        res = max(res, simulate((i as isize, 0), (0, 1), &field));
+        res = max(res, simulate((i as isize, (field[0].len() - 1) as isize), (0, -1), &field));
+    }
+
+    for i in 0..field[0].len() {
+        res = max(res, simulate((0, i as isize), (1, 0), &field));
+        res = max(res, simulate((field.len() as isize -1, i as isize), (-1, 0), &field));
+    }
+
     println!("{res}");
 }
