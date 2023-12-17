@@ -86,17 +86,28 @@ fn main() {
         visited.insert((cur.pos.clone(), cur.dir.clone(), cur.num_of_same), new_sum);
 
 
-        if cur.pos == endpos {
+        if cur.pos == endpos && cur.num_of_same >= 4 && cur.num_of_same <= 10 {
             result = new_sum;
             break;
         }
 
         let mut possible_dirs_and_same = Vec::new();
-        possible_dirs_and_same.push((get_left_dir(&cur.dir), 1));
-        possible_dirs_and_same.push((get_right_dir(&cur.dir), 1));
-        if cur.num_of_same < 3 {
-            possible_dirs_and_same.push((cur.dir.clone(), cur.num_of_same+1))
+        if cur.num_of_same >= 4 && cur.num_of_same <= 10 {
+            possible_dirs_and_same.push((get_left_dir(&cur.dir), 1));
+            possible_dirs_and_same.push((get_right_dir(&cur.dir), 1));
         }
+        // <4 means only direct same
+        if cur.num_of_same < 4 {
+            possible_dirs_and_same.push((cur.dir.clone(), cur.num_of_same+1))
+        } else {
+            possible_dirs_and_same.push((get_left_dir(&cur.dir), 1));
+            possible_dirs_and_same.push((get_right_dir(&cur.dir), 1));
+            // ==10 -> you must go left or right, else also full is allowed
+            if cur.num_of_same < 10 {
+                possible_dirs_and_same.push((cur.dir.clone(), cur.num_of_same+1))
+            }
+        }
+        assert!(cur.num_of_same <= 10);
 
         for (new_dir, same) in possible_dirs_and_same {
             let new_pos = Position(cur.pos.0 + new_dir.0, cur.pos.1 + new_dir.1);
