@@ -3,9 +3,8 @@ use std::io;
 
 #[derive(Debug)]
 struct Instruction {
-    dir: char,
-    steps: i32,
-    color: String,
+    dir: i8,
+    steps: i64,
 }
 
 fn main() {
@@ -13,14 +12,13 @@ fn main() {
 
     let mut instructions: Vec<Instruction> = vec![];
 
-    let re = Regex::new(r"(\w) (\d+) \(#([\w\d]+)\)").unwrap();
+    let re = Regex::new(r"\(#([\w\d]+)([0-3])\)").unwrap();
     for l in lines {
-        for (_, [dir, steps, color]) in re.captures_iter(l.as_str()).map(|c| c.extract()) {
-            let dir = dir.chars().next().unwrap();
-            let steps = steps.parse().unwrap();
-            let color = color.to_string();
+        for (_, [steps, dir]) in re.captures_iter(l.as_str()).map(|c| c.extract()) {
+            let dir = dir.to_string().parse().unwrap();
+            let steps = u32::from_str_radix(steps, 16).unwrap() as i64;
 
-            instructions.push(Instruction { dir, steps, color });
+            instructions.push(Instruction { dir, steps });
         }
     }
 
@@ -31,10 +29,10 @@ fn main() {
     let mut points_on_coords = 0;
     for instr in instructions.iter() {
         match instr.dir {
-            'R' => cur_point = (cur_point.0, cur_point.1 + instr.steps),
-            'L' => cur_point = (cur_point.0, cur_point.1 - instr.steps),
-            'U' => cur_point = (cur_point.0 - instr.steps, cur_point.1),
-            'D' => cur_point = (cur_point.0 + instr.steps, cur_point.1),
+            0 => cur_point = (cur_point.0, cur_point.1 + instr.steps),
+            2 => cur_point = (cur_point.0, cur_point.1 - instr.steps),
+            3 => cur_point = (cur_point.0 - instr.steps, cur_point.1),
+            1 => cur_point = (cur_point.0 + instr.steps, cur_point.1),
             _ => panic!(),
         };
 
