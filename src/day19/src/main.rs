@@ -1,119 +1,131 @@
-use evalexpr::*;
 use regex::Regex;
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::io;
 
 #[derive(Debug)]
-struct Decision {
-    expr: String,
-    target: String,
-}
-#[derive(Debug)]
 struct Rule {
-    from: String,
-    decisions: Vec<Decision>,
+    target_yes: String,
+    expr: Option<String>,
+    target_no: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct InputValues {
-    x: i64,
-    m: i64,
-    a: i64,
-    s: i64,
+    minmaxs: [(u64, u64); 4],
 }
 
-fn parse_input() -> (HashMap<String, Rule>, Vec<InputValues>) {
+fn parse_input() -> HashMap<String, Rule> {
     let lines: Vec<_> = io::stdin().lines().map(|x| x.unwrap()).collect();
 
     let re_rules = Regex::new(r"(\w+)\{(.+)\}").unwrap();
-    let re_input = Regex::new(r"x=(\d+),m=(\d+),a=(\d+),s=(\d+)").unwrap();
 
     let mut rules: HashMap<String, Rule> = HashMap::new();
-    let mut inputs = vec![];
 
     for l in lines {
         for (_, [from, decisions]) in re_rules.captures_iter(l.as_str()).map(|c| c.extract()) {
             let from = from.to_string();
-            let mut decs = vec![];
-            for decision in decisions.split(",") {
+            for (i, decision) in decisions.split(",").enumerate() {
+                let indexed_from = format!("{from}_{i}");
+                let nxt = i + 1;
+                let target_no = format!("{from}_{nxt}");
+                let rule;
                 if decision.contains(":") {
-                    let (expr, target) = decision.split_once(":").unwrap();
-                    let dec = Decision {
-                        expr: expr.to_string(),
-                        target: target.to_string(),
+                    let (expr, target_yes) = decision.split_once(":").unwrap();
+                    let target_yes = format!("{target_yes}_0");
+                    rule = Rule {
+                        target_yes,
+                        expr: Some(expr.to_string()),
+                        target_no: Some(target_no.to_string()),
                     };
-                    decs.push(dec);
                 } else {
-                    let dec = Decision {
-                        expr: "0<1".to_string(),
-                        target: decision.to_string(),
+                    rule = Rule {
+                        target_yes: format!("{decision}_0"),
+                        expr: None,
+                        target_no: None,
                     };
-                    decs.push(dec);
                 }
+                rules.insert(indexed_from.clone(), rule);
             }
-            rules.insert(
-                from.clone(),
-                Rule {
-                    from,
-                    decisions: decs,
-                },
-            );
-        }
-
-        for (_, [x, m, a, s]) in re_input.captures_iter(l.as_str()).map(|c| c.extract()) {
-            let x = x.parse().unwrap();
-            let m = m.parse().unwrap();
-            let a = a.parse().unwrap();
-            let s = s.parse().unwrap();
-
-            inputs.push(InputValues { x, m, a, s });
         }
     }
 
-    (rules, inputs)
+    rules
 }
 
-fn shall_accept(input: &InputValues, rules: &HashMap<String, Rule>) -> bool {
-    let mut cur = "in".to_string();
-
-    let context = context_map! {
-        "x" => input.x,
-        "m" => input.m,
-        "a" => input.a,
-        "s" => input.s,
+fn count_accept(input: InputValues, rules: &HashMap<String, Rule>, cur: String) -> u64 {
+    if input.minmaxs.iter().any(|x| x.1 < x.0) {
+        return 0;
     }
-    .unwrap();
 
-    loop {
-        if cur == String::from("A") {
-            return true;
-        };
-        if cur == String::from("R") {
-            return false;
-        };
+    if cur == String::from("A_0") {
+        return input
+            .minmaxs
+            .iter()
+            .map(|x| x.1 - x.0 + 1)
+            .reduce(|a, b| a * b)
+            .unwrap();
+    }
+    if cur == String::from("R_0") {
+        return 0;
+    }
 
-        let rule = rules.get(&cur).unwrap();
+    let order = "xmas";
 
-        for decision in &rule.decisions {
-            let evaluate = eval_with_context(&decision.expr, &context);
+    let rule = rules.get(&cur).unwrap();
+    match &rule.expr {
+        None => {
+            return count_accept(input, rules, rule.target_yes.clone());
+        }
+        Some(xp) => {
+            let mut characters = xp.chars();
+            let ch = characters.next().unwrap();
+            let sign = characters.next().unwrap();
+            let border: u64 = characters.as_str().to_string().parse().unwrap();
 
-            if evaluate == Ok(Value::from(true)) {
-                cur = decision.target.clone();
-                break;
+            let allowed;
+            let denied;
+            if sign == '<' {
+                allowed = (1, border - 1);
+                denied = (border, 4000);
+            } else if sign == '>' {
+                allowed = (border + 1, 4000);
+                denied = (1, border);
+            } else {
+                panic!()
             }
+
+            let pos = order.find(ch).unwrap();
+
+            let mut accepting_input = input.clone();
+            accepting_input.minmaxs[pos] = (
+                max(accepting_input.minmaxs[pos].0, allowed.0),
+                min(accepting_input.minmaxs[pos].1, allowed.1),
+            );
+            let mut denying_input = input.clone();
+            denying_input.minmaxs[pos] = (
+                max(denying_input.minmaxs[pos].0, denied.0),
+                min(denying_input.minmaxs[pos].1, denied.1),
+            );
+
+            return count_accept(accepting_input, rules, rule.target_yes.clone())
+                + count_accept(
+                    denying_input,
+                    rules,
+                    rule.target_no.clone().unwrap().clone(),
+                );
         }
     }
 }
 
 fn main() {
-    let (rules, inputs) = parse_input();
+    let rules = parse_input();
 
-    let mut result = 0;
-    for input in inputs {
-        let accept = shall_accept(&input, &rules);
-        if accept {
-            result += input.x + input.m + input.a + input.s;
-        }
-    }
+    println!("{rules:#?}");
+
+    let input = InputValues {
+        minmaxs: [(1, 4000), (1, 4000), (1, 4000), (1, 4000)],
+    };
+    let result = count_accept(input, &rules, String::from("in_0"));
     println!("{result}");
 }
