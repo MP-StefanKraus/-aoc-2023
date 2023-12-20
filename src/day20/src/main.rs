@@ -1,5 +1,8 @@
+use num::Integer;
 use std::collections::{HashMap, VecDeque};
 use std::io;
+
+
 
 #[derive(Clone, PartialEq, Debug)]
 enum SignalType {
@@ -162,11 +165,11 @@ fn main() {
             left_node = characters.as_str().to_string();
         }
 
-        let mut right_nodes = side_separation.get(1).unwrap().trim().to_string();
+        let right_nodes = side_separation.get(1).unwrap().trim().to_string();
         let mut connection = vec![];
         for node in right_nodes.trim_start_matches(|x| x == '>').split(",") {
             let node = node.trim().to_string();
-            let mut opt_module: Option<&mut Module> = modules.get_mut(&node);
+            let opt_module: Option<&mut Module> = modules.get_mut(&node);
             match opt_module {
                 None => {
                     modules.insert(
@@ -184,31 +187,47 @@ fn main() {
     }
 
     let mut deque = VecDeque::new();
-    let mut count_low = 0i64;
-    let mut count_high = 0i64;
 
-    for i in 0..1000 {
+    let prev_nodes = [
+        String::from("pm"),
+        String::from("mk"),
+        String::from("pk"),
+        String::from("hf"),
+    ];
+
+    let mut found_numbers = HashMap::new();
+
+    let mut i = 0;
+
+    'outer: loop {
         deque.push_back(Pulse {
             target_node: String::from("broadcaster"),
             origin_node: String::from("button"),
             signal: SignalType::LOW,
         });
 
+        i += 1;
+
         while !deque.is_empty() {
             let nxt = deque.pop_front().unwrap();
 
-            if nxt.signal == SignalType::LOW {
-                count_low += 1
-            } else {
-                count_high += 1
+            if nxt.signal == SignalType::LOW && prev_nodes.contains(&nxt.target_node) {
+                if !found_numbers.contains_key(&nxt.target_node) {
+                    found_numbers.insert(nxt.target_node.clone(), i);
+                }
             }
 
-            let mut module = modules.get_mut(&nxt.target_node).unwrap();
+            if found_numbers.iter().count() == prev_nodes.len() {
+                break 'outer;
+            }
+
+            let module = modules.get_mut(&nxt.target_node).unwrap();
             let result = module.process_signal(nxt, &connections);
             deque.extend(result);
         }
     }
 
-    println!("{}, {}", count_low, count_high);
-    println!("{}", count_low * count_high);
+    println!("{found_numbers:#?}");
+    let result = found_numbers.values().fold(1i64, |a, b| a.lcm(&b));
+    println!("{result:#?}");
 }
