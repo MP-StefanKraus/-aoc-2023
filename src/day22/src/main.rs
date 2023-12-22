@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::cmp::{max, min};
 use std::collections::HashSet;
 use std::io;
@@ -9,7 +10,7 @@ struct Cube {
     z: i32,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 struct Brick {
     start_cube: Cube,
     end_cube: Cube,
@@ -154,18 +155,24 @@ fn main() {
 
     let stabelized = downfall_until_fixed(&bricks);
 
-    let mut result = 0;
+    let fallen_brick_numbers: Vec<usize> = stabelized
+        .par_iter()
+        .enumerate()
+        .map(|(i, _)| {
+            let mut current_bricks = stabelized.clone();
+            current_bricks.remove(i);
 
-    for (i, _) in stabelized.iter().enumerate() {
-        let mut current_bricks = stabelized.clone();
-        current_bricks.remove(i);
+            let new_bricks = downfall_until_fixed(&current_bricks);
+            let new_bricks_set: HashSet<Brick> = HashSet::from_iter(new_bricks);
+            let previous_sets: HashSet<Brick> = HashSet::from_iter(current_bricks);
 
-        println!("{i}");
-        let new_bricks = single_downfall_step(&current_bricks);
-        if same_as_before(&current_bricks, &new_bricks) {
-            result += 1;
-        }
-    }
+            let num_fallen = previous_sets.difference(&new_bricks_set).count();
+            println!("{i}: {num_fallen}");
+            num_fallen
+        })
+        .collect();
+
+    let result: usize = fallen_brick_numbers.iter().sum();
 
     println!("{result}");
 }
