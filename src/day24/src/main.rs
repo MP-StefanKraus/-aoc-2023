@@ -1,8 +1,9 @@
 use regex::Regex;
+use std::arch::x86_64::_mm_minpos_epu16;
 use std::io;
 
-const MIN: f64 = 200000000000000.0;
-const MAX: f64 = 400000000000000.0;
+const MIN: i64 = -500;
+const MAX: i64 = 500;
 
 #[derive(Debug)]
 struct HailStone {
@@ -33,49 +34,98 @@ fn main() {
         hailstones.push(HailStone { x, y, z, u, v, w });
     }
 
-    println!("{hailstones:#?}");
+    let p1 = &hailstones[0];
+    let p2 = &hailstones[1];
 
-    let mut res = 0;
+    let mut potential_results = vec![];
 
-    for (i1, h1) in hailstones.iter().enumerate() {
-        for (i2, h2) in hailstones.iter().enumerate() {
-            if i1 >= i2 {
-                continue;
-            }
+    let dx = p1.x - p2.x;
+    let dy = p1.y - p2.y;
+    let dz = p1.z - p2.z;
 
-            let nom = (h1.x - h2.x) * h2.v - (h1.y - h2.y) * h2.u;
-            let den = h1.u * h2.v - h2.u * h1.v;
+    // Find possible solutions where we have integer solutions through
+    // two hailstone lines, finds too much but prunes search space well.
+    // math was done on paper, and assumption about velocity was done.
 
-            if den == 0 {
-                println!("skip");
-                continue;
-            }
+    for u in MIN..MAX + 1 {
+        for v in MIN..MAX + 1 {
+            for w in MIN..MAX + 1 {
+                let du1 = u - p1.u;
+                let du2 = u - p2.u;
+                let dv1 = v - p1.v;
+                let dv2 = v - p2.v;
+                let dw1 = w - p1.w;
+                let dw2 = w - p2.w;
 
-            let a = -(nom as f64 / den as f64);
+                let num1 = dx * dv2 - dy * du2;
+                let den1 = du1 * dv2 - dv1 * du2;
 
-            if a < 0.0 {
-                println!("previous A!");
-                continue;
-            }
+                if den1 == 0 {
+                    continue;
+                }
 
-            let x_now = (h1.x as f64) + a * (h1.u as f64);
-            let y_now = (h1.y as f64) + a * (h1.v as f64);
+                if num1 % den1 != 0 {
+                    continue;
+                }
 
-            let b = (x_now - h2.x as f64) / h2.u as f64;
+                let l1 = num1 / den1;
 
-            if b < 0.0 {
-                println!("previous B!");
-                continue;
-            }
+                if l1 < 0 {
+                    continue;
+                }
 
-            println!("{x_now} {y_now}");
+                let num2 = l1 * dv1 - dy;
+                let den2 = dv2;
 
-            if x_now >= MIN && x_now <= MAX && y_now >= MIN && y_now <= MAX {
-                println!("taken!");
-                res += 1;
+                if den2 == 0 {
+                    continue;
+                }
+
+                if num2 % den2 != 0 {
+                    continue;
+                }
+
+                let l2 = num2 / den2;
+
+                if l2 < 0 {
+                    continue;
+                }
+
+                if l1 * dw1 - l2 * dw2 != dz {
+                    continue;
+                }
+
+                let x1 = p1.x - l1 * du1;
+                let y1 = p1.y - l1 * dv1;
+                let z1 = p1.z - l1 * dw1;
+
+                potential_results.push((x1, y1, z1, u, v, w));
             }
         }
     }
 
-    println!("{res}");
+    // now validate which ones match all hailstone collisions.
+    for (x, y, z, u, v, w) in potential_results {
+        let mut possible = true;
+
+        for hailstone in hailstones.iter() {
+            let dx = hailstone.x - x;
+            let du = hailstone.u - u;
+            if dx % du != 0 {
+                possible = false;
+                break;
+            }
+            let l = dx / du;
+
+            possible &= hailstone.x + l * hailstone.u != x + l * u
+                && hailstone.y + l * hailstone.u != y + l * v
+                && hailstone.z + l * hailstone.u != z + l * w
+        }
+
+        if possible {
+            let res = x + y + z;
+            println!("{x}, {y}, {z} => {res}");
+            break;
+        }
+    }
 }
